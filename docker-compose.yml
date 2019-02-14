@@ -1,0 +1,62 @@
+version: '3.5'
+
+services:
+
+  cadvisor:
+    image: google/cadvisor
+    hostname: cadvisor
+    container_name: monitoring_cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - monitoring
+
+  prometheus:
+      image: prom/prometheus:v2.7.1
+      hostname: prometheus
+      container_name: monitoring_prometheus
+      volumes:
+        - ./builder/prometheus/:/etc/prometheus/
+        - prometheus-data:/prometheus
+      command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.console.libraries=/etc/prometheus/console_libraries'
+        - '--web.console.templates=/etc/prometheus/consoles'
+        - '--storage.tsdb.retention=200h'
+      networks:
+        - monitoring
+
+  grafana:
+    image: grafana/grafana:5.4.3
+    hostname: grafana
+    container_name: monitoring_grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - monitoring
+
+  browser:
+    image: ellerbrock/alpine-firefox:latest
+    container_name: monitoring_browser
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=unix$DISPLAY
+    shm_size: '2gb'
+    command:
+      - 'http://grafana:3000'
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
+    name: containers_monitoring
+
+volumes:
+  grafana-data: {}
+  prometheus-data: {}
